@@ -14,12 +14,15 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: "22"
           cache: true
       - run: vp install
-      - run: npm publish --provenance
+      - run: |
+          # setup-vp 不会把 NODE_AUTH_TOKEN 写进 .npmrc，需手动注入 registry token
+          npm config set "//registry.npmjs.org/:_authToken" "$NODE_AUTH_TOKEN"
+          npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
