@@ -5,10 +5,11 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   pack: {
-    dts: {
-      tsgo: true,
-    },
-    exports: true,
+    entry: ["src/index.ts"],
+    format: ["esm", "cjs"],
+    dts: { tsgo: true },
+    sourcemap: true,
+    clean: true,
   },
   lint: {
     options: {

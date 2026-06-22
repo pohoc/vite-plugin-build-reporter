@@ -1,23 +1,52 @@
 {
   "name": "vite-plugin-build-reporter",
-  "version": "0.0.0",
-  "description": "A starter for creating a TypeScript package.",
-  "homepage": "https://github.com/author/library#readme",
+  "version": "0.1.0",
+  "description": "一个 Vite 插件，在 build 之后把构建分析（耗时、产物体积、Top chunk、gzip）打印到终端，不生成任何报告文件。",
+  "keywords": [
+    "analyzer",
+    "build",
+    "bundle",
+    "cli",
+    "report",
+    "rolldown",
+    "rollup",
+    "vite",
+    "vite-plugin"
+  ],
+  "homepage": "https://github.com/pohoc/vite-plugin-build-reporter#readme",
   "bugs": {
-    "url": "https://github.com/author/library/issues"
+    "url": "https://github.com/pohoc/vite-plugin-build-reporter/issues"
   },
   "license": "MIT",
-  "author": "Author Name <author.name@mail.com>",
+  "author": {
+    "name": "pohoc",
+    "email": "po.hoc4@gmail.com"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/author/library.git"
+    "url": "git+https://github.com/pohoc/vite-plugin-build-reporter.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -26,10 +55,16 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test",
+    "test": "vp test run",
+    "test:watch": "vp test watch",
     "check": "vp check",
-    "prepublishOnly": "vp run build",
+    "verify": "vp check && vp test run && vp pack",
+    "release": "bumpp",
+    "prepack": "vp run verify",
     "prepare": "vp config"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^25.6.2",
@@ -38,11 +73,18 @@
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
   },
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "11.7.0",
+      "version": "11.8.0",
       "onFail": "download"
     }
-  }
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "packageManager": "pnpm@11.8.0"
 }
