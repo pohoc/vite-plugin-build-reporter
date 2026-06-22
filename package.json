@@ -76,13 +76,6 @@
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.8.0",
-      "onFail": "download"
-    }
-  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
