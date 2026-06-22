@@ -49,15 +49,13 @@ export function renderBar(fraction: number, width = 10): string {
 
 /** 拆分进度条的已填充段与空槽，便于分段着色 */
 export function renderBarParts(fraction: number, width = 10): { filled: string; empty: string } {
-  const safeWidth = Number.isFinite(width) ? Math.max(0, Math.floor(width)) : 0;
+  // 统一细线 ─，不靠粗细字符切换（手动划线）；占比完全由 formatter 分段染色体现——
+  // 占用段染占用色、空槽染默认色，线条连续、过渡处仅颜色变化。精度到 1 字符位（2 倍密度）。
+  const cells = Number.isFinite(width) ? Math.max(0, Math.floor(width * 2)) : 0;
+  if (cells === 0) return { filled: "", empty: "" };
   const clamped = Math.max(0, Math.min(1, fraction));
-  // 半格/八分之一格字符内部带空白，不同终端字体下会在实心段中形成明显断口。
-  // 改用整格渲染；非零占比至少显示一格，精确比例仍由旁边的百分比文本表达。
-  const filledCount =
-    clamped <= 0 ? 0 : Math.min(safeWidth, Math.max(1, Math.round(clamped * safeWidth)));
-  const filled = "█".repeat(filledCount);
-  const empty = "░".repeat(safeWidth - filledCount);
-  return { filled, empty };
+  const filledCount = Math.round(clamped * cells);
+  return { filled: "─".repeat(filledCount), empty: "─".repeat(cells - filledCount) };
 }
 
 /** 产物列表中的最大 size */

@@ -29,28 +29,23 @@ test("detectAssetType maps extensions to types", () => {
   expect(detectAssetType("data.json")).toBe("other");
 });
 
-test("renderBar clamps and fills", () => {
-  expect(renderBar(0)).toBe("░".repeat(10));
-  expect(renderBar(1)).toBe("█".repeat(10));
-  expect(renderBar(0.5)).toBe("█████░░░░░");
-  expect(renderBar(1.5)).toBe("█".repeat(10));
-  expect(renderBar(-1)).toBe("░".repeat(10));
+test("renderBar always spans the full cell count as a continuous line", () => {
+  // 统一细线 ─，占比由 formatter 染色体现；字符串本身恒等长
+  expect(renderBar(0)).toBe("─".repeat(20));
+  expect(renderBar(1)).toBe("─".repeat(20));
+  expect(renderBar(0.5)).toBe("─".repeat(20));
+  expect(renderBar(1.5)).toBe("─".repeat(20));
+  expect(renderBar(-1)).toBe("─".repeat(20));
 });
 
-test("renderBar uses continuous full cells without partial-cell gaps", () => {
-  expect(renderBar(0.55, 10)).toBe("██████░░░░");
-  expect(renderBar(0.57, 10)).toBe("██████░░░░");
-});
-
-test("renderBar keeps small non-zero values visible", () => {
-  expect(renderBar(0.01, 10)).toBe("█░░░░░░░░░");
-  expect(renderBar(0.001, 0)).toBe("");
-});
-
-test("renderBarParts splits filled and empty segments", () => {
-  expect(renderBarParts(0.55, 10)).toEqual({ filled: "██████", empty: "░░░░" });
-  expect(renderBarParts(0, 10)).toEqual({ filled: "", empty: "░░░░░░░░░░" });
-  expect(renderBarParts(1, 10)).toEqual({ filled: "██████████", empty: "" });
+test("renderBarParts marks the occupied span for coloring", () => {
+  // 占用段长度反映占比（2 倍密度），formatter 据此分段染色
+  expect(renderBarParts(0.55, 10)).toEqual({ filled: "─".repeat(11), empty: "─".repeat(9) });
+  expect(renderBarParts(0.62, 10)).toEqual({ filled: "─".repeat(12), empty: "─".repeat(8) });
+  expect(renderBarParts(0.04, 10)).toEqual({ filled: "─", empty: "─".repeat(19) });
+  expect(renderBarParts(0, 10)).toEqual({ filled: "", empty: "─".repeat(20) });
+  expect(renderBarParts(1, 10)).toEqual({ filled: "─".repeat(20), empty: "" });
+  expect(renderBarParts(0.001, 0)).toEqual({ filled: "", empty: "" });
 });
 
 test("maxSize returns largest or 0", () => {

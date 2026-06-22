@@ -18,7 +18,14 @@ const TYPE_LABEL: Record<AssetType, string> = {
   image: "Image",
   other: "Other",
 };
-const CARD_WIDTH = 82;
+/** 产物类型对应的条形色，Top 产物与分类汇总共用，保证两处配色一致 */
+const TYPE_COLOR: Record<AssetType, (text: string) => string> = {
+  js: picocolors.cyan,
+  css: picocolors.magenta,
+  font: picocolors.yellow,
+  image: picocolors.green,
+  other: picocolors.gray,
+};
 const TABLE_NAME_WIDTH = 38;
 const ESCAPE = String.fromCharCode(27);
 // eslint-disable-next-line no-control-regex -- 需匹配 ANSI 转义序列（含 ESC 控制字符）
@@ -64,9 +71,18 @@ function renderJson(summary: BuildSummary): string {
   return JSON.stringify(summary, null, 2);
 }
 
+/** 检测终端列数；非 TTY 或过窄（<60）回退默认值，封顶避免超宽折行 */
+function resolveColumns(fallback = 100, max = 120): number {
+  const cols = process.stdout?.columns;
+  if (typeof cols !== "number" || cols < 60) return fallback;
+  return Math.min(Math.floor(cols), max);
+}
+
 function renderCard(summary: BuildSummary, options: ResolvedFormatOptions): string {
   const { assets, diff, timing, totalBrotli, totalGzip, totalSize } = summary;
   const c = picocolors;
+  const columns = resolveColumns();
+  const barWidth = Math.max(6, Math.floor((columns - 10) / 2));
   const warningCount = assets.filter((asset) => asset.size > options.warnSize).length;
   const lines: string[] = [
     renderMetricRow([
@@ -85,11 +101,19 @@ function renderCard(summary: BuildSummary, options: ResolvedFormatOptions): stri
 
   const top = sortAssets(assets).slice(0, options.topN);
   if (top.length > 0) {
-    lines.push("", c.bold(`Top ${top.length} 产物`), ...renderTopAssets(top, totalSize, options));
+    lines.push(
+      "",
+      c.bold(`Top ${top.length} 产物`),
+      ...renderTopAssets(top, totalSize, options, barWidth),
+    );
   }
 
   if (options.groupByType && assets.length > 0) {
-    lines.push("", c.bold("分类汇总"), ...renderGroups(assets, totalSize, options.terminal));
+    lines.push(
+      "",
+      c.bold("分类汇总"),
+      ...renderGroups(assets, totalSize, options.terminal, barWidth),
+    );
   }
 
   if (diff) {
@@ -97,7 +121,7 @@ function renderCard(summary: BuildSummary, options: ResolvedFormatOptions): stri
   }
 
   if (options.terminal === "pretty") {
-    return renderBox("构建报告", lines);
+    return renderBox("构建报告", lines, columns);
   }
 
   return ["", c.bold("构建报告"), c.gray("=".repeat(8)), ...lines].join("\n");
@@ -190,41 +214,51 @@ function renderTopAssets(
   assets: AssetRecord[],
   totalSize: number,
   options: ResolvedFormatOptions,
+  barWidth: number,
 ): string[] {
   const c = picocolors;
-  return assets.map((asset, index) => {
+  const nameWidth = options.terminal === "pretty" ? 30 : 34;
+  const lines: string[] = [];
+  for (const [index, asset] of assets.entries()) {
     const rank = `${index + 1}.`;
-    const name = padEndDisplay(asset.name, options.terminal === "pretty" ? 30 : 34);
+    const name = padEndDisplay(asset.name, nameWidth);
     const size = padStartDisplay(formatBytes(asset.size), 9);
     const ratio = padStartDisplay(formatPercent(asset.size, totalSize), 7);
     const isWarn = asset.size > options.warnSize;
     const head = `${padStartDisplay(rank, 3)} ${name} ${size} ${ratio}`;
-    if (options.terminal === "plain") {
-      return isWarn ? c.yellow(` ${head}`) : ` ${head}`;
+    lines.push(` ${isWarn ? c.yellow(head) : head}`);
+    // pretty 下 bar 独占一整行（占满内容区），位数翻几倍，占比才分得开
+    if (options.terminal === "pretty") {
+      const { filled, empty } = renderBarParts(asset.size / (totalSize || 1), barWidth);
+      const color = isWarn ? c.yellow : TYPE_COLOR[asset.type];
+      lines.push(`    ${color(filled)}${c.gray(empty)}`);
     }
-    const { filled, empty } = renderBarParts(asset.size / (totalSize || 1), 14);
-    const bar = `${c.cyan(filled)}${c.gray(empty)}`;
-    return ` ${isWarn ? c.yellow(head) : head} ${bar}`;
-  });
+  }
+  return lines;
 }
 
 function renderGroups(
   assets: AssetRecord[],
   total: number,
   terminal: Exclude<TerminalMode, "auto">,
+  barWidth: number,
 ): string[] {
-  const c = picocolors;
   const groups = new Map<AssetType, number>();
   for (const asset of assets) {
     groups.set(asset.type, (groups.get(asset.type) ?? 0) + asset.size);
   }
-  return TYPE_ORDER.filter((type) => groups.has(type)).map((type) => {
+  const lines: string[] = [];
+  for (const type of TYPE_ORDER.filter((type) => groups.has(type))) {
     const size = groups.get(type) ?? 0;
-    const base = ` ${padEndDisplay(TYPE_LABEL[type], 7)} ${padStartDisplay(formatBytes(size), 9)} ${padStartDisplay(formatPercent(size, total), 7)}`;
-    if (terminal === "plain") return base;
-    const { filled, empty } = renderBarParts(size / (total || 1), 12);
-    return `${base} ${c.cyan(filled)}${c.gray(empty)}`;
-  });
+    lines.push(
+      ` ${padEndDisplay(TYPE_LABEL[type], 7)} ${padStartDisplay(formatBytes(size), 9)} ${padStartDisplay(formatPercent(size, total), 7)}`,
+    );
+    if (terminal === "pretty") {
+      const { filled, empty } = renderBarParts(size / (total || 1), barWidth);
+      lines.push(`    ${TYPE_COLOR[type](filled)}${picocolors.gray(empty)}`);
+    }
+  }
+  return lines;
 }
 
 function renderDiff(diff: BuildDiff): string {
@@ -248,9 +282,9 @@ function renderDiff(diff: BuildDiff): string {
   return `${c.gray("对比上次")} ${parts.join(" / ")}`;
 }
 
-function renderBox(title: string, lines: string[]): string {
+function renderBox(title: string, lines: string[], width: number): string {
   const c = picocolors;
-  const innerWidth = CARD_WIDTH - 4;
+  const innerWidth = width - 4;
   const titleText = ` ${title} `;
   const top = `╭${titleText}${"─".repeat(Math.max(0, innerWidth - displayWidth(titleText)))}╮`;
   const bottom = `╰${"─".repeat(innerWidth)}╯`;
