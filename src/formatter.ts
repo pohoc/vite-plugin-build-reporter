@@ -1,4 +1,4 @@
-import picocolors from "picocolors";
+import { colors } from "./colors.ts";
 import type {
   AssetRecord,
   AssetType,
@@ -20,11 +20,11 @@ const TYPE_LABEL: Record<AssetType, string> = {
 };
 /** 产物类型对应的条形色，Top 产物与分类汇总共用，保证两处配色一致 */
 const TYPE_COLOR: Record<AssetType, (text: string) => string> = {
-  js: picocolors.cyan,
-  css: picocolors.magenta,
-  font: picocolors.yellow,
-  image: picocolors.green,
-  other: picocolors.gray,
+  js: colors.cyan,
+  css: colors.magenta,
+  font: colors.yellow,
+  image: colors.green,
+  other: colors.gray,
 };
 const TABLE_NAME_WIDTH = 38;
 const ESCAPE = String.fromCharCode(27);
@@ -43,6 +43,7 @@ export interface FormatOptions {
 
 type ResolvedFormatOptions = Omit<FormatOptions, "terminal"> & {
   terminal: Exclude<TerminalMode, "auto">;
+  warningCount: number;
 };
 
 export function formatReport(
@@ -53,6 +54,7 @@ export function formatReport(
   const resolvedOptions: ResolvedFormatOptions = {
     ...options,
     terminal: options.terminal ?? "plain",
+    warningCount: summary.assets.filter((asset) => asset.size > options.warnSize).length,
   };
   if (format === "json") return renderJson(summary);
   if (format === "minimal") return renderMinimal(summary, resolvedOptions);
@@ -62,7 +64,7 @@ export function formatReport(
 
 /** 预算超限展示 */
 export function formatBudgetResult(result: BudgetResult): string {
-  const c = picocolors;
+  const c = colors;
   const lines = result.messages.map((message) => `  ${c.red("✗")} ${message}`);
   return `${c.red(c.bold("⚠ 预算超限"))}\n${lines.join("\n")}`;
 }
@@ -80,10 +82,10 @@ function resolveColumns(fallback = 100, max = 120): number {
 
 function renderCard(summary: BuildSummary, options: ResolvedFormatOptions): string {
   const { assets, diff, timing, totalBrotli, totalGzip, totalSize } = summary;
-  const c = picocolors;
+  const c = colors;
   const columns = resolveColumns();
   const barWidth = Math.max(6, Math.floor((columns - 10) / 2));
-  const warningCount = assets.filter((asset) => asset.size > options.warnSize).length;
+  const warningCount = options.warningCount;
   const lines: string[] = [
     renderMetricRow([
       ["总大小", c.bold(c.green(formatBytes(totalSize)))],
@@ -129,7 +131,7 @@ function renderCard(summary: BuildSummary, options: ResolvedFormatOptions): stri
 
 function renderTable(summary: BuildSummary, options: ResolvedFormatOptions): string {
   const { assets, timing, totalBrotli, totalGzip, totalSize } = summary;
-  const c = picocolors;
+  const c = colors;
   const columns = [
     { title: "产物", width: TABLE_NAME_WIDTH },
     { title: "类型", width: 7 },
@@ -170,8 +172,8 @@ function renderTable(summary: BuildSummary, options: ResolvedFormatOptions): str
 
 function renderMinimal(summary: BuildSummary, options: ResolvedFormatOptions): string {
   const { assets, timing, totalBrotli, totalGzip, totalSize } = summary;
-  const c = picocolors;
-  const warningCount = assets.filter((asset) => asset.size > options.warnSize).length;
+  const c = colors;
+  const warningCount = options.warningCount;
   const parts: string[] = [formatBytes(totalSize)];
   if (options.gzip) parts.push(`gzip ${formatOptionalBytes(totalGzip)}`);
   if (options.brotli) parts.push(`brotli ${formatOptionalBytes(totalBrotli)}`);
@@ -183,7 +185,7 @@ function renderMinimal(summary: BuildSummary, options: ResolvedFormatOptions): s
 }
 
 function renderMetricRow(metrics: Array<[string, string]>): string {
-  return metrics.map(([label, value]) => `${picocolors.gray(label)} ${value}`).join("  ");
+  return metrics.map(([label, value]) => `${colors.gray(label)} ${value}`).join("  ");
 }
 
 function renderCompressionLine(
@@ -199,7 +201,7 @@ function renderCompressionLine(
   if (options.brotli && totalBrotli !== null) {
     parts.push(`brotli ${formatBytes(totalBrotli)} (${formatPercent(totalBrotli, totalSize)})`);
   }
-  return parts.length > 0 ? `${picocolors.gray("压缩")} ${parts.join(" / ")}` : "";
+  return parts.length > 0 ? `${colors.gray("压缩")} ${parts.join(" / ")}` : "";
 }
 
 function renderStages(stages: BuildSummary["timing"]["stages"]): string {
@@ -207,7 +209,7 @@ function renderStages(stages: BuildSummary["timing"]["stages"]): string {
   const parts: string[] = [];
   if (stages.transform !== undefined) parts.push(`transform ${formatDuration(stages.transform)}`);
   if (stages.bundle !== undefined) parts.push(`bundle ${formatDuration(stages.bundle)}`);
-  return parts.length > 0 ? `${picocolors.gray("阶段")} ${parts.join(" / ")}` : "";
+  return parts.length > 0 ? `${colors.gray("阶段")} ${parts.join(" / ")}` : "";
 }
 
 function renderTopAssets(
@@ -216,7 +218,7 @@ function renderTopAssets(
   options: ResolvedFormatOptions,
   barWidth: number,
 ): string[] {
-  const c = picocolors;
+  const c = colors;
   const nameWidth = options.terminal === "pretty" ? 30 : 34;
   const lines: string[] = [];
   for (const [index, asset] of assets.entries()) {
@@ -255,14 +257,14 @@ function renderGroups(
     );
     if (terminal === "pretty") {
       const { filled, empty } = renderBarParts(size / (total || 1), barWidth);
-      lines.push(`    ${TYPE_COLOR[type](filled)}${picocolors.gray(empty)}`);
+      lines.push(`    ${TYPE_COLOR[type](filled)}${colors.gray(empty)}`);
     }
   }
   return lines;
 }
 
 function renderDiff(diff: BuildDiff): string {
-  const c = picocolors;
+  const c = colors;
   const sign = (n: number) => (n > 0 ? "+" : "");
   const paint = (n: number, text: string) => (n > 0 ? c.red(text) : c.green(text));
   const sizeStr = paint(
@@ -283,7 +285,7 @@ function renderDiff(diff: BuildDiff): string {
 }
 
 function renderBox(title: string, lines: string[], width: number): string {
-  const c = picocolors;
+  const c = colors;
   const innerWidth = width - 4;
   const titleText = ` ${title} `;
   const top = `╭${titleText}${"─".repeat(Math.max(0, innerWidth - displayWidth(titleText)))}╮`;

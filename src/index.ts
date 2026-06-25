@@ -43,6 +43,8 @@ export { Timer } from "./timer.ts";
 
 /** vite 默认的 chunkSizeWarningLimit（KB） */
 const DEFAULT_CHUNK_LIMIT_KB = 500;
+const VALID_FORMATS = ["card", "table", "minimal", "json"] as const;
+const VALID_TERMINALS = ["auto", "pretty", "plain"] as const;
 
 interface ResolvedOptions {
   enabled: boolean;
@@ -205,8 +207,12 @@ function sumMetric(records: AssetRecord[], metric: "size"): number {
 }
 
 function sumOptionalMetric(records: AssetRecord[], metric: "gzip" | "brotli"): number | null {
-  if (records.some((record) => record[metric] === null)) return null;
-  return records.reduce((sum, record) => sum + (record[metric] ?? 0), 0);
+  let sum = 0;
+  for (const record of records) {
+    if (record[metric] === null) return null;
+    sum += record[metric];
+  }
+  return sum;
 }
 
 function validateOptions(options: BuildReporterOptions): void {
@@ -219,13 +225,10 @@ function validateOptions(options: BuildReporterOptions): void {
   validateBoolean("brotli", options.brotli);
   validateBoolean("includeSourceMaps", options.includeSourceMaps);
   validateBoolean("compare", options.compare);
-  if (
-    options.format !== undefined &&
-    !["card", "table", "minimal", "json"].includes(options.format)
-  ) {
+  if (options.format !== undefined && !VALID_FORMATS.includes(options.format)) {
     invalidOption("format", "必须是 card、table、minimal 或 json");
   }
-  if (options.terminal !== undefined && !["auto", "pretty", "plain"].includes(options.terminal)) {
+  if (options.terminal !== undefined && !VALID_TERMINALS.includes(options.terminal)) {
     invalidOption("terminal", "必须是 auto、pretty 或 plain");
   }
   if (options.topN !== undefined && (!Number.isInteger(options.topN) || options.topN < 0)) {

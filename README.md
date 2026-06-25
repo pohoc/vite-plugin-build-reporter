@@ -39,8 +39,8 @@ buildReporter({
   terminal: "auto", // 'auto' | 'pretty' | 'plain'
   topN: 10, // Top N 排行数量
   groupByType: true, // 按类型分类汇总
-  gzip: true, // 显示 gzip 大小
-  brotli: false, // brotli（默认关，同步计算会增加构建时间）
+  gzip: true, // 计算并显示 gzip 大小（同步 zlib 压缩）
+  brotli: false, // brotli（同步压缩质量 9，默认关；显著增加构建时间，按需开启）
   includeSourceMaps: false, // 是否把 .map 文件计入统计
   warnSize: undefined, // 大文件告警阈值（字节）；默认联动 vite chunkSizeWarningLimit
   compare: false, // 历史对比（默认关闭，零文件）
@@ -58,8 +58,8 @@ buildReporter({
 | `terminal`          | `'auto'`                     | 终端渲染模式：`auto` 按 TTY/CI 判断，`pretty` 使用边框和进度条，`plain` 使用纯文本 |
 | `topN`              | `10`                         | 排行显示的产物数量                                                                 |
 | `groupByType`       | `true`                       | 是否输出 JS/CSS/字体/图片 分类汇总                                                 |
-| `gzip`              | `true`                       | 是否计算并显示 gzip 大小                                                           |
-| `brotli`            | `false`                      | 是否计算并显示 brotli 大小（默认关，同步计算会增加构建时间，按需开启）             |
+| `gzip`              | `true`                       | 是否计算并显示 gzip 大小（同步 zlib 压缩，大项目开启会略增构建时间）               |
+| `brotli`            | `false`                      | 是否计算并显示 brotli 大小（同步压缩，质量 9，显著增加构建时间，按需开启）         |
 | `includeSourceMaps` | `false`                      | 是否把 `.map` 文件计入产物、总量和预算统计；默认排除以避免放大线上体积             |
 | `warnSize`          | vite `chunkSizeWarningLimit` | 超过该阈值的产物标记 ⚠（未设置时联动 vite 的 `build.chunkSizeWarningLimit`）       |
 | `compare`           | `false`                      | 是否启用历史对比                                                                   |
@@ -117,7 +117,7 @@ buildReporter({
 
 ## CI / 非 TTY
 
-插件检测 `process.stdout.isTTY` 与 `CI`：CI 等非交互环境自动改用纯文本（不画边框），颜色由 picocolors 按 `NO_COLOR` 自动去除。无需额外配置。
+插件检测 `process.stdout.isTTY` 与 `CI`：非交互环境自动改用纯文本（不画边框）。颜色遵循 `NO_COLOR`（https://no-color.org）与 `CI` 环境变量，自动降级为纯文本。无需额外配置。
 
 ## 历史对比
 

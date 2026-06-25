@@ -1,14 +1,16 @@
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
-import type { AssetRecord, AssetType } from "./types.ts";
+import type { AssetType } from "./types.ts";
 
-const SIZE_UNITS = ["B", "KB", "MB", "GB"] as const;
+const SIZE_UNITS = ["B", "kB", "MB", "GB"] as const;
 
-/** 字节 → 人类可读，如 412 KB / 2.3 MB */
+/** 字节 → 人类可读，如 412 kB / 2.3 MB（1 kB = 1000 字节，与 Vite 内置输出保持一致） */
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), SIZE_UNITS.length - 1);
-  const value = bytes / 1024 ** unitIndex;
-  // B 取整；KB/MB/GB 保留 1 位小数，整数时省略 .0（如 412 KB 而非 412.0 KB）
+  const unitIndex = Math.min(
+    Math.max(0, Math.floor(Math.log(bytes) / Math.log(1000))),
+    SIZE_UNITS.length - 1,
+  );
+  const value = bytes / 1000 ** unitIndex;
   const display = unitIndex === 0 ? value.toFixed(0) : value.toFixed(1).replace(/\.0$/, "");
   return `${display} ${SIZE_UNITS[unitIndex]}`;
 }
@@ -41,12 +43,6 @@ export function detectAssetType(fileName: string): AssetType {
   return "other";
 }
 
-/** 渲染连续进度条，fraction 取值 0~1 */
-export function renderBar(fraction: number, width = 10): string {
-  const { filled, empty } = renderBarParts(fraction, width);
-  return `${filled}${empty}`;
-}
-
 /** 拆分进度条的已填充段与空槽，便于分段着色 */
 export function renderBarParts(fraction: number, width = 10): { filled: string; empty: string } {
   // 统一细线 ─，不靠粗细字符切换（手动划线）；占比完全由 formatter 分段染色体现——
@@ -56,11 +52,6 @@ export function renderBarParts(fraction: number, width = 10): { filled: string; 
   const clamped = Math.max(0, Math.min(1, fraction));
   const filledCount = Math.round(clamped * cells);
   return { filled: "─".repeat(filledCount), empty: "─".repeat(cells - filledCount) };
-}
-
-/** 产物列表中的最大 size */
-export function maxSize(assets: AssetRecord[]): number {
-  return assets.reduce((max, asset) => Math.max(max, asset.size), 0);
 }
 
 /** 百分比格式化 */
