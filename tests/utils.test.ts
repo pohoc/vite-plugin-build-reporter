@@ -98,10 +98,10 @@ test("formatPercent handles normal ratios and edge cases", () => {
   expect(formatPercent(0, 0)).toBe("0%");
 });
 
-test("gzipSize and brotliSize compress repetitive content", () => {
+test("gzipSize and brotliSize compress repetitive content", async () => {
   const big = "a".repeat(1000);
-  expect(gzipSize(big)).toBeLessThan(big.length);
-  expect(brotliSize(big)).toBeLessThan(big.length);
+  expect(await gzipSize(big)).toBeLessThan(big.length);
+  expect(await brotliSize(big)).toBeLessThan(big.length);
 });
 
 test("rawByteLength counts utf-8 bytes", () => {

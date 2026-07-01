@@ -21,26 +21,27 @@ export interface CollectAssetsOptions {
   includeSourceMaps?: boolean;
 }
 
-/** 遍历 bundle 收集每个产物的类型、原始大小、gzip 与 brotli 大小 */
-export function collectAssets(
+/** 遍历 bundle 收集每个产物的类型、原始大小、gzip 与 brotli 大小（压缩并行、异步不阻塞） */
+export async function collectAssets(
   bundle: Record<string, Collectable>,
   options: CollectAssetsOptions,
-): AssetRecord[] {
-  const records: AssetRecord[] = [];
+): Promise<AssetRecord[]> {
+  const tasks: Promise<AssetRecord>[] = [];
   for (const [fileName, entry] of Object.entries(bundle)) {
     if (!options.includeSourceMaps && /\.map$/i.test(fileName)) continue;
     const raw = getRaw(entry);
     if (raw === null) continue;
-    const size = rawByteLength(raw);
-    records.push({
-      name: fileName,
-      type: detectAssetType(fileName),
-      size,
-      gzip: options.gzip ? gzipSize(raw) : null,
-      brotli: options.brotli ? brotliSize(raw) : null,
-    });
+    tasks.push(
+      (async () => ({
+        name: fileName,
+        type: detectAssetType(fileName),
+        size: rawByteLength(raw),
+        gzip: options.gzip ? await gzipSize(raw) : null,
+        brotli: options.brotli ? await brotliSize(raw) : null,
+      }))(),
+    );
   }
-  return records;
+  return Promise.all(tasks);
 }
 
 function getRaw(entry: Collectable): string | Uint8Array | null {

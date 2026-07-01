@@ -1,5 +1,9 @@
-import { brotliCompressSync, constants, gzipSync } from "node:zlib";
+import { promisify } from "node:util";
+import { brotliCompress, constants, gzip } from "node:zlib";
 import type { AssetType } from "./types.ts";
+
+const gzipAsync = promisify(gzip);
+const brotliAsync = promisify(brotliCompress);
 
 const SIZE_UNITS = ["B", "kB", "MB", "GB"] as const;
 
@@ -15,18 +19,18 @@ export function formatBytes(bytes: number): string {
   return `${display} ${SIZE_UNITS[unitIndex]}`;
 }
 
-/** 计算 gzip 字节大小 */
-export function gzipSize(input: string | Uint8Array): number {
-  const buffer = Buffer.from(input);
-  return gzipSync(buffer).length;
+/** 计算 gzip 字节大小（异步，不阻塞事件循环） */
+export async function gzipSize(input: string | Uint8Array): Promise<number> {
+  return (await gzipAsync(Buffer.from(input))).length;
 }
 
-/** 计算 brotli 字节大小（quality 9：比默认 11 快数倍，体积估算足够） */
-export function brotliSize(input: string | Uint8Array): number {
-  const buffer = Buffer.from(input);
-  return brotliCompressSync(buffer, {
-    params: { [constants.BROTLI_PARAM_QUALITY]: 9 },
-  }).length;
+/** 计算 brotli 字节大小（quality 9：比默认 11 快数倍，体积估算足够；异步不阻塞） */
+export async function brotliSize(input: string | Uint8Array): Promise<number> {
+  return (
+    await brotliAsync(Buffer.from(input), {
+      params: { [constants.BROTLI_PARAM_QUALITY]: 9 },
+    })
+  ).length;
 }
 
 /** 原始内容的字节长度 */

@@ -127,14 +127,14 @@ export function buildReporter(options: BuildReporterOptions = {}): Plugin {
       // renderStart 是 Rollup/Rolldown 输出生成阶段的真实起点；generateBundle 已接近阶段末尾。
       timer.markBundleStart();
     },
-    generateBundle(_outputOptions, bundle) {
+    async generateBundle(_outputOptions, bundle) {
       if (!opts.enabled) return;
       assets.push(
-        ...collectAssets(bundle as Record<string, Collectable>, {
+        ...(await collectAssets(bundle as Record<string, Collectable>, {
           gzip: opts.gzip || opts.budget?.totalGzip !== undefined,
           brotli: opts.brotli,
           includeSourceMaps: opts.includeSourceMaps,
-        }),
+        })),
       );
       hasBundle = true;
     },
